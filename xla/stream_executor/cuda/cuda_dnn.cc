@@ -427,6 +427,11 @@ void PreloadCudnnSubLibsHelper(dnn::ConvolutionKind kind) {
 
 CudnnSupport::CudnnSupport(GpuExecutor* parent) : parent_(parent) {}
 
+static const char *const kCudnnNotInitializedExplanation =
+    "Failure to initialize cudnn may be due to OOM (cudnn needs some free "
+    "memory when you initialize it, and your deep-learning framework may have "
+    "preallocated more than its fair share)";
+
 absl::Status CudnnSupport::Init() {
   ScopedActivateExecutorContext context(parent_);
 
@@ -486,8 +491,11 @@ absl::Status CudnnSupport::Init() {
     } else {
       const auto& version = result.value();
       LOG(ERROR) << "Possibly insufficient driver version: "
-                 << cuda::DriverVersionToString(version);
+                 << cuda::DriverVersionToString(version)
+                 << ". " << kCudnnNotInitializedExplanation;
     }
+  }if (status == CUDNN_STATUS_ALLOC_FAILED){
+    LOG(ERROR) << kCudnnNotInitializedExplanation;
   }
 
   return absl::InternalError(
