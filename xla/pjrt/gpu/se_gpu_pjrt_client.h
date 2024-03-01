@@ -145,7 +145,7 @@ class StreamExecutorGpuDevice : public PjRtStreamExecutorDevice {
   StreamExecutorGpuDevice(int id,
                           std::unique_ptr<LocalDeviceState> local_device_state,
                           std::string device_kind, std::string device_vendor,
-                          int node_id, int slice_index = 0);
+                          std::string compute_capability, int node_id, int slice_index = 0);
 
   int slice_index() const;
 
