@@ -932,7 +932,7 @@ Status BuildDistributedDevices(
     device_proto->set_local_device_ordinal(ordinal_and_device.first);
     device_proto->set_name(desc->name());
     device_proto->set_vendor(desc->device_vendor());
-    device_proto->set_compute_capability(MakeComputeCapabilityString(desc));
+    device_proto->set_compute_capability(MakeComputeCapabilityString(desc.get()));
   }
 
   GlobalTopologyProto global_topology;
