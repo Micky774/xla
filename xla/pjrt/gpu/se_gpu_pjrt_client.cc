@@ -1004,12 +1004,31 @@ StreamExecutorGpuDevice::StreamExecutorGpuDevice(
   std::vector<int64_t> v_coords(description().coords().begin(),
                                 description().coords().end());
 
-  description().SetAttributes({
+  auto local_device_state_ = this->GetLocalDeviceState();
+
+  absl::flat_hash_map<std::string, PjRtDeviceAttribute> attributes = {
       {"coords", xla::PjRtDeviceAttribute(v_coords)},
       {"core_on_chip", xla::PjRtDeviceAttribute(core_index)},
-      {"device_vendor", device_vendor_},
-      {"slice_index", static_cast<int64_t>(slice_index)},
-  });
+      {"device_vendor", xla::PjRtDeviceAttribute(device_vendor_)},
+      {"slice_index",
+       xla::PjRtDeviceAttribute(static_cast<int64_t>(slice_index))},
+  };
+  std::string compute_capability;
+  if (local_device_state_.ok()) {
+    const se::DeviceDescription& desc =
+        local_device_state_.value()->executor()->GetDeviceDescription();
+#if GOOGLE_CUDA
+    se::CudaComputeCapability cc = desc.cuda_compute_capability();
+    compute_capability =
+        std::to_string(cc.major) + "." + std::to_string(cc.minor);
+#else  // GOOGLE_CUDA
+    compute_capability = desc.rocm_compute_capability().gfx_version();
+#endif  // GOOGLE_CUDA
+    attributes.emplace("compute_capability",
+                       xla::PjRtDeviceAttribute(compute_capability));
+  }
+
+  description().SetAttributes(attributes);
   description().SetToString(absl::StrFormat(
       "StreamExecutorGpuDevice(device_kind=%s, id=%i, process_index=%i, "
       "slice_index=%i))",
@@ -1060,7 +1079,7 @@ absl::StatusOr<std::unique_ptr<PjRtClient>> GetStreamExecutorGpuClient(
     const GpuClientOptions& options) {
 #if TENSORFLOW_USE_ROCM
   auto pjrt_platform_name = xla::RocmName();
-#else   // TENSORFLOW_USE_ROCM
+#else  // TENSORFLOW_USE_ROCM
   auto pjrt_platform_name = xla::CudaName();
 #endif  // TENSORFLOW_USE_ROCM
 
