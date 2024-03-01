@@ -921,6 +921,7 @@ Status BuildDistributedDevices(
     boot_id_str = boot_id_str_or_status.value();
   }
   local_topology.set_boot_id(boot_id_str);
+  std::string compute_capability;
   for (const auto& ordinal_and_device : local_device_states) {
     const se::Platform* platform =
         ordinal_and_device.second->executor()->platform();
@@ -931,6 +932,15 @@ Status BuildDistributedDevices(
     device_proto->set_local_device_ordinal(ordinal_and_device.first);
     device_proto->set_name(desc->name());
     device_proto->set_vendor(desc->device_vendor());
+#if GOOGLE_CUDA
+    se::CudaComputeCapability cc = desc->cuda_compute_capability();
+    compute_capability =
+        std::to_string(cc.major) + "." + std::to_string(cc.minor);
+#else  // GOOGLE_CUDA
+    compute_capability = desc->rocm_compute_capability().gfx_version();
+#endif  // GOOGLE_CUDA
+    device_proto->set_compute_capability(compute_capability);
+
   }
 
   GlobalTopologyProto global_topology;
